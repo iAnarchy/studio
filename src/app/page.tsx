@@ -10,11 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 // UI Components
 import AppHeader from '@/components/layout/AppHeader';
 import ClassSelector from '@/components/class/ClassSelector';
-import ClassModal from '@/components/class/ClassModal';
+// ClassModal removed as class creation/editing is removed
 import AppTabs from '@/components/navigation/AppTabs';
 import CurrentClassInfoCard from '@/components/class/CurrentClassInfoCard';
-import EmptyState from '@/components/ui/EmptyState';
-import { Button } from '@/components/ui/button'; // Import Button for EmptyState
+// EmptyState might still be used by tabs, Button might be needed if tabs use it.
+// For now, keeping Button import just in case.
+import { Button } from '@/components/ui/button'; 
+import { BookOpen } from 'lucide-react';
+
 
 // Tab Content Components
 import ClassOverviewTab from '@/components/tabs/ClassOverviewTab';
@@ -22,17 +25,18 @@ import AddStudentTab from '@/components/tabs/AddStudentTab';
 import ViewStudentsTab from '@/components/tabs/ViewStudentsTab';
 import ManagePointsTab from '@/components/tabs/ManagePointsTab';
 import LeaderboardTab from '@/components/tabs/LeaderboardTab';
-import { BookOpen } from 'lucide-react';
+
 
 const CLASS_PULSE_DATA_KEY = 'classPulseData';
+// CLASS_PULSE_CURRENT_CLASS_ID_KEY is no longer strictly needed if there's only one class,
+// but keeping it won't harm and might simplify logic if we decide to re-add class selection later.
 const CLASS_PULSE_CURRENT_CLASS_ID_KEY = 'classPulseCurrentClassId';
 
+
 export default function HomePage() {
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [currentClassId, setCurrentClassId] = useState<string | null>(null);
+  const [classes, setClasses] = useState<Class[]>(INITIAL_CLASSES_DATA); // Initialize with the single class
+  const [currentClassId, setCurrentClassId] = useState<string | null>(INITIAL_CLASSES_DATA[0].id); // Set the ID of the single class
   const [activeTab, setActiveTab] = useState<TabKey>(NAV_TAB_ITEMS[0].id);
-  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
-  const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [isLoadingStudent, setIsLoadingStudent] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
@@ -40,120 +44,57 @@ export default function HomePage() {
 
   useEffect(() => {
     setIsClient(true);
-    let dataLoaded = false;
     try {
       const storedClassesRaw = localStorage.getItem(CLASS_PULSE_DATA_KEY);
       if (storedClassesRaw) {
         const parsedClasses = JSON.parse(storedClassesRaw) as Class[];
-        setClasses(parsedClasses);
-        if (parsedClasses.length > 0) {
-          const storedCurrentClassId = localStorage.getItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
-          if (storedCurrentClassId && parsedClasses.find(c => c.id === storedCurrentClassId)) {
-            setCurrentClassId(storedCurrentClassId);
-          } else {
-            setCurrentClassId(parsedClasses[0].id); 
-          }
+        // Ensure the loaded data matches our single-class structure or reset
+        if (parsedClasses.length === 1 && parsedClasses[0].id === INITIAL_CLASSES_DATA[0].id) {
+          setClasses(parsedClasses);
+          setCurrentClassId(parsedClasses[0].id);
         } else {
-          setCurrentClassId(null);
+          // If localStorage data is not what we expect, reset to initial single class
+          setClasses(INITIAL_CLASSES_DATA);
+          setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
+          localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+          localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, INITIAL_CLASSES_DATA[0].id);
         }
-        dataLoaded = true;
+      } else {
+        // No data in localStorage, set initial single class
+        setClasses(INITIAL_CLASSES_DATA);
+        setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
+        localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+        localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, INITIAL_CLASSES_DATA[0].id);
       }
     } catch (error) {
       console.error("Error al cargar datos desde localStorage:", error);
-    }
-
-    if (!dataLoaded) {
+      // Fallback to initial single class on error
       setClasses(INITIAL_CLASSES_DATA);
-      if (INITIAL_CLASSES_DATA.length > 0) {
-        const firstClassId = INITIAL_CLASSES_DATA[0].id;
-        setCurrentClassId(firstClassId);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
-          localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, firstClassId);
-        }
-      } else {
-        setCurrentClassId(null);
-      }
+      setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
+      localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+      localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, INITIAL_CLASSES_DATA[0].id);
     }
   }, []);
 
   useEffect(() => {
-    if (isClient) {
-      if (classes.length > 0) {
-        localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(classes));
-      } else {
-        // If all classes are deleted, remove from localStorage
-        localStorage.removeItem(CLASS_PULSE_DATA_KEY);
-        localStorage.removeItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
-      }
+    if (isClient && classes.length > 0) { // Should always be 1 class
+      localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(classes));
     }
   }, [classes, isClient]);
 
   useEffect(() => {
-    if (isClient) {
-      if (currentClassId) {
-        localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, currentClassId);
-      } else if (classes.length === 0) { // Only remove if no classes exist
-         localStorage.removeItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
-      }
+    if (isClient && currentClassId) {
+      localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, currentClassId);
     }
-  }, [currentClassId, isClient, classes.length]);
+  }, [currentClassId, isClient]);
   
   const currentClass = classes.find(cls => cls.id === currentClassId) || null;
 
-  const handleSelectClass = useCallback((classId: string) => {
-    setCurrentClassId(classId);
-    setActiveTab(NAV_TAB_ITEMS[0].id);
-  }, []);
+  // handleSelectClass is no longer needed as there's only one class and it's pre-selected.
+  // If ClassSelector still calls it, it won't do much harm but could be removed from ClassSelector props.
 
-  const handleShowAddClassModal = useCallback(() => {
-    setEditingClass(null);
-    setIsClassModalOpen(true);
-  }, []);
-
-  const handleShowEditClassModal = useCallback(() => {
-    if (currentClass) {
-      setEditingClass(currentClass);
-      setIsClassModalOpen(true);
-    }
-  }, [currentClass]);
-
-  const handleCloseClassModal = useCallback(() => {
-    setIsClassModalOpen(false);
-    setEditingClass(null);
-  }, []);
-
-  const handleSaveClass = useCallback((data: { name: string; subject: string; description?: string }, classId?: string) => {
-    if (classId) { 
-      setClasses(prev => prev.map(cls => cls.id === classId ? { ...cls, ...data } : cls));
-      toast({ title: "Clase Actualizada", description: `La clase "${data.name}" ha sido actualizada.` });
-    } else { 
-      const newClassId = `cl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      const newClass: Class = { id: newClassId, ...data, students: [] };
-      setClasses(prev => [...prev, newClass]);
-      setCurrentClassId(newClassId); 
-      setActiveTab(NAV_TAB_ITEMS[0].id); 
-      toast({ title: "Clase Creada", description: `La clase "${data.name}" ha sido creada.` });
-    }
-    handleCloseClassModal();
-  }, [toast, handleCloseClassModal]);
-
-  const handleDeleteClass = useCallback(() => {
-    if (!currentClassId) return;
-    const classToDelete = classes.find(c => c.id === currentClassId);
-    if (!classToDelete) return;
-
-    if (window.confirm(`¿Estás seguro de eliminar la clase "${classToDelete.name}"? Esta acción no se puede deshacer.`)) {
-      const updatedClasses = classes.filter(cls => cls.id !== currentClassId);
-      setClasses(updatedClasses);
-      if (updatedClasses.length > 0) {
-        setCurrentClassId(updatedClasses[0].id);
-      } else {
-        setCurrentClassId(null);
-      }
-      toast({ title: "Clase Eliminada", description: `La clase "${classToDelete.name}" ha sido eliminada.`, variant: "destructive" });
-    }
-  }, [classes, currentClassId, toast]);
+  // Class creation, editing, and deletion handlers are removed.
+  // handleShowAddClassModal, handleShowEditClassModal, handleCloseClassModal, handleSaveClass, handleDeleteClass removed.
 
   const handleAddStudent = useCallback((studentData: StudentFormData) => {
     if (!currentClassId) return;
@@ -212,33 +153,16 @@ export default function HomePage() {
   }, [currentClassId, currentClass?.students, toast]);
 
   const renderTabContent = () => {
-    if (!isClient) return <div className="flex justify-center items-center h-64"><p>Cargando...</p></div>;
-    
-    if (classes.length === 0 && !currentClassId) { // This condition must be before checking !currentClass
-      return (
-         <EmptyState 
-          icon={<BookOpen className="w-16 h-16" />}
-          title="Bienvenido a ClassPulse"
-          message="Comienza creando tu primera clase para gestionar estudiantes y actividades."
-          actions={<Button onClick={handleShowAddClassModal}>Crear Nueva Clase</Button>}
-        />
-      );
+    if (!isClient || !currentClass) { // Simplified loading/empty state check
+      return <div className="flex justify-center items-center h-64"><p>Cargando...</p></div>;
     }
     
-    if (!currentClass && classes.length > 0) { // If there are classes but none is selected
-       return (
-         <EmptyState 
-          icon={<BookOpen className="w-16 h-16" />}
-          title="Selecciona una Clase"
-          message="Por favor, selecciona una clase de la lista para continuar."
-        />
-       );
-    }
-
+    // No need for "Bienvenido a ClassPulse" or "Selecciona una Clase" empty states as there's always one class selected.
 
     switch (activeTab) {
       case 'class-overview':
-        return <ClassOverviewTab currentClass={currentClass} onShowEditClassModal={handleShowEditClassModal} onDeleteClass={handleDeleteClass} />;
+        // Removed onShowEditClassModal and onDeleteClass as class editing/deletion is removed
+        return <ClassOverviewTab currentClass={currentClass} />;
       case 'add-student':
         return <AddStudentTab currentClass={currentClass} onAddStudent={handleAddStudent} isLoading={isLoadingStudent} />;
       case 'view-students':
@@ -268,10 +192,13 @@ export default function HomePage() {
         <ClassSelector
           classes={classes}
           currentClassId={currentClassId}
-          onSelectClass={handleSelectClass}
-          onShowAddClassModal={handleShowAddClassModal}
+          // onSelectClass is technically not needed now, but ClassSelector might expect it.
+          // It won't break anything if it's called without effect.
+          onSelectClass={() => {}} // No-op as there's only one class
+          // onShowAddClassModal removed
         />
-        <AppTabs activeTab={activeTab} onSelectTab={setActiveTab} disabled={!currentClassId && classes.length > 0} />
+        {/* AppTabs disabled prop will always be false as currentClassId is always set */}
+        <AppTabs activeTab={activeTab} onSelectTab={setActiveTab} disabled={false} /> 
         
         {currentClassId && <CurrentClassInfoCard currentClass={currentClass} />}
 
@@ -279,12 +206,7 @@ export default function HomePage() {
           {renderTabContent()}
         </div>
       </main>
-      <ClassModal 
-        isOpen={isClassModalOpen}
-        onClose={handleCloseClassModal}
-        onSave={handleSaveClass}
-        editingClass={editingClass}
-      />
+      {/* ClassModal component removed */}
       <footer className="text-center py-6 border-t border-border mt-auto">
         <p className="text-sm text-muted-foreground font-body">&copy; {new Date().getFullYear()} ClassPulse. Todos los derechos reservados.</p>
       </footer>

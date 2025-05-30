@@ -1,17 +1,17 @@
+
 'use client';
 
 import React from 'react';
 import type { Class } from '@/types';
-import { Button } from '@/components/ui/button';
+// Button removed as actions are removed
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Star, BarChartBig, Trophy, Edit3, Trash2 } from 'lucide-react';
+import { Users, Star, BarChartBig, Trophy } from 'lucide-react'; // Edit3, Trash2 removed
 import EmptyState from '@/components/ui/EmptyState';
 import AiActivitySuggester from '@/components/ai/AiActivitySuggester';
 
 interface ClassOverviewTabProps {
   currentClass: Class | null;
-  onShowEditClassModal: () => void;
-  onDeleteClass: () => void;
+  // onShowEditClassModal and onDeleteClass props removed
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
@@ -28,13 +28,13 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
   </Card>
 );
 
-const ClassOverviewTab: React.FC<ClassOverviewTabProps> = ({ currentClass, onShowEditClassModal, onDeleteClass }) => {
+const ClassOverviewTab: React.FC<ClassOverviewTabProps> = ({ currentClass }) => {
   if (!currentClass) {
     return (
       <EmptyState 
         icon={<BarChartBig className="w-16 h-16" />}
-        title="Sin Resumen de Clase"
-        message="Selecciona o crea una clase para ver su resumen."
+        title="Cargando Resumen de Clase" // Changed title as class selection is fixed
+        message="La información de la clase se está cargando."
       />
     );
   }
@@ -55,19 +55,7 @@ const ClassOverviewTab: React.FC<ClassOverviewTabProps> = ({ currentClass, onSho
 
       <AiActivitySuggester grade={students[0]?.grade || "General"} subject={currentClass.subject} />
       
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="font-headline text-primary">Acciones de Clase</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
-          <Button onClick={onShowEditClassModal} variant="outline" className="font-body border-primary text-primary hover:bg-primary/10">
-            <Edit3 className="mr-2 h-4 w-4" /> Editar Clase
-          </Button>
-          <Button onClick={onDeleteClass} variant="destructive" className="font-body">
-            <Trash2 className="mr-2 h-4 w-4" /> Eliminar Clase
-          </Button>
-        </CardContent>
-      </Card>
+      {/* "Acciones de Clase" Card removed as editing/deleting classes is no longer possible */}
     </div>
   );
 };
