@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -5,9 +6,6 @@ import type { Class, Student, TabKey } from '@/types';
 import { StudentFormData } from '@/components/student/StudentForm';
 import { INITIAL_CLASSES_DATA, NAV_TAB_ITEMS } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-
 
 // UI Components
 import AppHeader from '@/components/layout/AppHeader';
@@ -16,6 +14,7 @@ import ClassModal from '@/components/class/ClassModal';
 import AppTabs from '@/components/navigation/AppTabs';
 import CurrentClassInfoCard from '@/components/class/CurrentClassInfoCard';
 import EmptyState from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/button'; // Import Button for EmptyState
 
 // Tab Content Components
 import ClassOverviewTab from '@/components/tabs/ClassOverviewTab';
@@ -24,6 +23,9 @@ import ViewStudentsTab from '@/components/tabs/ViewStudentsTab';
 import ManagePointsTab from '@/components/tabs/ManagePointsTab';
 import LeaderboardTab from '@/components/tabs/LeaderboardTab';
 import { BookOpen } from 'lucide-react';
+
+const CLASS_PULSE_DATA_KEY = 'classPulseData';
+const CLASS_PULSE_CURRENT_CLASS_ID_KEY = 'classPulseCurrentClassId';
 
 export default function HomePage() {
   const [classes, setClasses] = useState<Class[]>([]);
@@ -38,18 +40,70 @@ export default function HomePage() {
 
   useEffect(() => {
     setIsClient(true);
-    // Load initial data or from localStorage if implemented
-    setClasses(INITIAL_CLASSES_DATA);
-    if (INITIAL_CLASSES_DATA.length > 0) {
-      setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
+    let dataLoaded = false;
+    try {
+      const storedClassesRaw = localStorage.getItem(CLASS_PULSE_DATA_KEY);
+      if (storedClassesRaw) {
+        const parsedClasses = JSON.parse(storedClassesRaw) as Class[];
+        setClasses(parsedClasses);
+        if (parsedClasses.length > 0) {
+          const storedCurrentClassId = localStorage.getItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
+          if (storedCurrentClassId && parsedClasses.find(c => c.id === storedCurrentClassId)) {
+            setCurrentClassId(storedCurrentClassId);
+          } else {
+            setCurrentClassId(parsedClasses[0].id); 
+          }
+        } else {
+          setCurrentClassId(null);
+        }
+        dataLoaded = true;
+      }
+    } catch (error) {
+      console.error("Error al cargar datos desde localStorage:", error);
+    }
+
+    if (!dataLoaded) {
+      setClasses(INITIAL_CLASSES_DATA);
+      if (INITIAL_CLASSES_DATA.length > 0) {
+        const firstClassId = INITIAL_CLASSES_DATA[0].id;
+        setCurrentClassId(firstClassId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+          localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, firstClassId);
+        }
+      } else {
+        setCurrentClassId(null);
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      if (classes.length > 0) {
+        localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(classes));
+      } else {
+        // If all classes are deleted, remove from localStorage
+        localStorage.removeItem(CLASS_PULSE_DATA_KEY);
+        localStorage.removeItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
+      }
+    }
+  }, [classes, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      if (currentClassId) {
+        localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, currentClassId);
+      } else if (classes.length === 0) { // Only remove if no classes exist
+         localStorage.removeItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
+      }
+    }
+  }, [currentClassId, isClient, classes.length]);
   
   const currentClass = classes.find(cls => cls.id === currentClassId) || null;
 
   const handleSelectClass = useCallback((classId: string) => {
     setCurrentClassId(classId);
-    setActiveTab(NAV_TAB_ITEMS[0].id); // Reset to overview tab on class change
+    setActiveTab(NAV_TAB_ITEMS[0].id);
   }, []);
 
   const handleShowAddClassModal = useCallback(() => {
@@ -70,15 +124,15 @@ export default function HomePage() {
   }, []);
 
   const handleSaveClass = useCallback((data: { name: string; subject: string; description?: string }, classId?: string) => {
-    if (classId) { // Editing existing class
+    if (classId) { 
       setClasses(prev => prev.map(cls => cls.id === classId ? { ...cls, ...data } : cls));
       toast({ title: "Clase Actualizada", description: `La clase "${data.name}" ha sido actualizada.` });
-    } else { // Creating new class
+    } else { 
       const newClassId = `cl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
       const newClass: Class = { id: newClassId, ...data, students: [] };
       setClasses(prev => [...prev, newClass]);
-      setCurrentClassId(newClassId); // Select the new class
-      setActiveTab(NAV_TAB_ITEMS[0].id); // Go to overview
+      setCurrentClassId(newClassId); 
+      setActiveTab(NAV_TAB_ITEMS[0].id); 
       toast({ title: "Clase Creada", description: `La clase "${data.name}" ha sido creada.` });
     }
     handleCloseClassModal();
@@ -89,12 +143,11 @@ export default function HomePage() {
     const classToDelete = classes.find(c => c.id === currentClassId);
     if (!classToDelete) return;
 
-    // Basic confirm, consider ShadCN AlertDialog for better UX
     if (window.confirm(`¿Estás seguro de eliminar la clase "${classToDelete.name}"? Esta acción no se puede deshacer.`)) {
-      setClasses(prev => prev.filter(cls => cls.id !== currentClassId));
-      const remainingClasses = classes.filter(cls => cls.id !== currentClassId);
-      if (remainingClasses.length > 0) {
-        setCurrentClassId(remainingClasses[0].id);
+      const updatedClasses = classes.filter(cls => cls.id !== currentClassId);
+      setClasses(updatedClasses);
+      if (updatedClasses.length > 0) {
+        setCurrentClassId(updatedClasses[0].id);
       } else {
         setCurrentClassId(null);
       }
@@ -160,16 +213,8 @@ export default function HomePage() {
 
   const renderTabContent = () => {
     if (!isClient) return <div className="flex justify-center items-center h-64"><p>Cargando...</p></div>;
-    if (!currentClass && activeTab !== 'class-overview' && classes.length > 0) {
-       return (
-         <EmptyState 
-          icon={<BookOpen className="w-16 h-16" />}
-          title="Selecciona una Clase"
-          message="Por favor, selecciona una clase de la lista para continuar."
-        />
-       );
-    }
-     if (classes.length === 0 && !currentClassId) {
+    
+    if (classes.length === 0 && !currentClassId) { // This condition must be before checking !currentClass
       return (
          <EmptyState 
           icon={<BookOpen className="w-16 h-16" />}
@@ -178,6 +223,16 @@ export default function HomePage() {
           actions={<Button onClick={handleShowAddClassModal}>Crear Nueva Clase</Button>}
         />
       );
+    }
+    
+    if (!currentClass && classes.length > 0) { // If there are classes but none is selected
+       return (
+         <EmptyState 
+          icon={<BookOpen className="w-16 h-16" />}
+          title="Selecciona una Clase"
+          message="Por favor, selecciona una clase de la lista para continuar."
+        />
+       );
     }
 
 
