@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { GraduationCap } from 'lucide-react';
 
@@ -7,7 +8,7 @@ const AppHeader: React.FC = () => {
       <div className="inline-flex items-center justify-center mb-2">
         <GraduationCap className="w-12 h-12 text-primary mr-3" />
         <h1 className="font-headline text-5xl font-bold text-primary">
-          ClassPulse
+          Plataforma Educativa
         </h1>
       </div>
       <p className="text-muted-foreground text-lg font-body">
@@ -18,3 +19,4 @@ const AppHeader: React.FC = () => {
 };
 
 export default AppHeader;
+

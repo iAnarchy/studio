@@ -23,25 +23,25 @@ const ClassSelector: React.FC<ClassSelectorProps> = ({
     <div className="bg-card p-4 md:p-6 rounded-lg shadow-lg mb-8">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
         <h3 className="font-headline text-2xl text-primary mb-2 sm:mb-0 flex items-center">
-          <BookOpen className="mr-2 h-6 w-6" /> Mi Clase
+          <BookOpen className="mr-2 h-6 w-6" /> Clase
         </h3>
         {/* "Nueva Clase" Button removed */}
       </div>
       {classes.length === 0 ? (
         <p className="text-muted-foreground text-center py-4">Cargando información de la clase...</p>
       ) : (
-        <div className="flex flex-wrap gap-3">
+        <div className="w-full"> {/* Removed flex flex-wrap gap-3, added w-full */}
           {classes.map((cls) => (
             <Button
               key={cls.id}
               variant={currentClassId === cls.id ? 'default' : 'outline'}
               onClick={() => onSelectClass(cls.id)} // This will be a no-op or select the only class
-              className={`font-body transition-all duration-300 ease-in-out transform hover:scale-105 ${
+              className={`font-body transition-all duration-300 ease-in-out transform hover:scale-105 w-full ${ // Added w-full
                 currentClassId === cls.id 
                 ? 'bg-primary text-primary-foreground shadow-md' 
                 : 'border-primary text-primary hover:bg-primary/10'
               }`}
-              size="lg"
+              size="lg" 
               // Disable button if it's not the current class, as selection is fixed
               disabled={currentClassId !== cls.id && classes.length === 1} 
             >
@@ -61,3 +61,4 @@ const ClassSelector: React.FC<ClassSelectorProps> = ({
 };
 
 export default ClassSelector;
+

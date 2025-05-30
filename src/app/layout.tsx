@@ -1,9 +1,10 @@
+
 import type { Metadata } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ClassPulse - Plataforma Educativa',
+  title: 'Plataforma Educativa',
   description: 'Sistema de Gestión de Clases y Estudiantes',
 };
 
@@ -27,3 +28,4 @@ export default function RootLayout({
     </html>
   );
 }
+
