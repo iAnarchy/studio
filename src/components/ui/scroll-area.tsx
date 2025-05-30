@@ -12,10 +12,11 @@ const ScrollArea = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
-    className={cn("relative overflow-hidden", className)}
+    className={cn("relative overflow-hidden", className)} // Root sigue siendo overflow-hidden
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+    <ScrollAreaPrimitive.Viewport className={cn("h-full w-full rounded-[inherit] overflow-auto", props.type === 'scroll' ? 'overflow-scroll' : '')}> 
+      {/* Añadido overflow-auto aquí. Si type es 'scroll', se fuerza overflow-scroll */}
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />
@@ -32,16 +33,16 @@ const ScrollBar = React.forwardRef<
     ref={ref}
     orientation={orientation}
     className={cn(
-      "flex touch-none select-none transition-colors z-20", // Added z-20 for good measure
+      "flex touch-none select-none transition-colors z-20", 
       orientation === "vertical" &&
-        "h-full w-2.5 border-l border-l-border bg-muted/30 p-[1px]", // Changed border to border-l-border, added bg-muted/30 to track
+        "h-full w-2.5 border-l border-l-transparent p-[1px]", // Usar border-l-transparent, el color lo da el thumb o el track del viewport
       orientation === "horizontal" &&
-        "h-2.5 flex-col border-t border-t-border bg-muted/30 p-[1px]", // Changed border to border-t-border, added bg-muted/30 to track
+        "h-2.5 flex-col border-t border-t-transparent p-[1px]", // Usar border-t-transparent
       className
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-primary opacity-75 hover:opacity-100" /> {/* Changed thumb to bg-primary and added opacity states */}
+    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-primary opacity-75 hover:opacity-100" />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ))
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
