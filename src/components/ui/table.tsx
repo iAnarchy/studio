@@ -6,7 +6,8 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  // Removido overflow-auto de este div para que ScrollArea pueda manejarlo
+  <div className="relative w-full"> 
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
