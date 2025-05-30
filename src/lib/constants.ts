@@ -1,6 +1,6 @@
 
 import type { Class, TabKey } from '@/types';
-import { BarChart3, PlusCircle, Users, Star, Trophy } from 'lucide-react';
+import { BarChart3, PlusCircle, Users, Star, Trophy, ClipboardCheck } from 'lucide-react';
 
 export const INITIAL_CLASSES_DATA: Class[] = [
   {
@@ -8,7 +8,7 @@ export const INITIAL_CLASSES_DATA: Class[] = [
     name: "Historia 12th B",
     subject: "Historia",
     description: "Clase de historia para duodécimo grado, enfocada en la historia contemporánea.",
-    students: [] // Students will be added via the app
+    students: [] 
   }
 ];
 
@@ -18,4 +18,5 @@ export const NAV_TAB_ITEMS: { id: TabKey; label: string; icon: React.ElementType
   { id: 'view-students', label: 'Ver Estudiantes', icon: Users },
   { id: 'manage-points', label: 'Gestionar Puntos', icon: Star },
   { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+  { id: 'grades', label: 'Calificaciones', icon: ClipboardCheck },
 ];

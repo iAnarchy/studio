@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Class, Student, TabKey } from '@/types';
+import type { Class, Student, TabKey, EvaluationType } from '@/types';
 import { StudentFormData } from '@/components/student/StudentForm';
 import { INITIAL_CLASSES_DATA, NAV_TAB_ITEMS } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
@@ -10,11 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 // UI Components
 import AppHeader from '@/components/layout/AppHeader';
 import ClassSelector from '@/components/class/ClassSelector';
-// ClassModal removed as class creation/editing is removed
 import AppTabs from '@/components/navigation/AppTabs';
 import CurrentClassInfoCard from '@/components/class/CurrentClassInfoCard';
-// EmptyState might still be used by tabs, Button might be needed if tabs use it.
-// For now, keeping Button import just in case.
 import { Button } from '@/components/ui/button'; 
 import { BookOpen } from 'lucide-react';
 
@@ -25,17 +22,16 @@ import AddStudentTab from '@/components/tabs/AddStudentTab';
 import ViewStudentsTab from '@/components/tabs/ViewStudentsTab';
 import ManagePointsTab from '@/components/tabs/ManagePointsTab';
 import LeaderboardTab from '@/components/tabs/LeaderboardTab';
+import GradesTab from '@/components/tabs/GradesTab';
 
 
 const CLASS_PULSE_DATA_KEY = 'classPulseData';
-// CLASS_PULSE_CURRENT_CLASS_ID_KEY is no longer strictly needed if there's only one class,
-// but keeping it won't harm and might simplify logic if we decide to re-add class selection later.
 const CLASS_PULSE_CURRENT_CLASS_ID_KEY = 'classPulseCurrentClassId';
 
 
 export default function HomePage() {
-  const [classes, setClasses] = useState<Class[]>(INITIAL_CLASSES_DATA); // Initialize with the single class
-  const [currentClassId, setCurrentClassId] = useState<string | null>(INITIAL_CLASSES_DATA[0].id); // Set the ID of the single class
+  const [classes, setClasses] = useState<Class[]>(INITIAL_CLASSES_DATA); 
+  const [currentClassId, setCurrentClassId] = useState<string | null>(INITIAL_CLASSES_DATA[0].id); 
   const [activeTab, setActiveTab] = useState<TabKey>(NAV_TAB_ITEMS[0].id);
   const [isLoadingStudent, setIsLoadingStudent] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -48,36 +44,52 @@ export default function HomePage() {
       const storedClassesRaw = localStorage.getItem(CLASS_PULSE_DATA_KEY);
       if (storedClassesRaw) {
         const parsedClasses = JSON.parse(storedClassesRaw) as Class[];
-        // Ensure the loaded data matches our single-class structure or reset
         if (parsedClasses.length === 1 && parsedClasses[0].id === INITIAL_CLASSES_DATA[0].id) {
-          setClasses(parsedClasses);
+          // Ensure students have the grades property
+          const classesWithGrades = parsedClasses.map(cls => ({
+            ...cls,
+            students: cls.students.map(s => ({
+              ...s,
+              grades: s.grades || {} // Initialize grades if missing
+            }))
+          }));
+          setClasses(classesWithGrades);
           setCurrentClassId(parsedClasses[0].id);
         } else {
-          // If localStorage data is not what we expect, reset to initial single class
-          setClasses(INITIAL_CLASSES_DATA);
+          const initialDataWithGrades = INITIAL_CLASSES_DATA.map(cls => ({
+            ...cls,
+            students: cls.students.map(s => ({...s, grades: s.grades || {} }))
+          }));
+          setClasses(initialDataWithGrades);
           setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
-          localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+          localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(initialDataWithGrades));
           localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, INITIAL_CLASSES_DATA[0].id);
         }
       } else {
-        // No data in localStorage, set initial single class
-        setClasses(INITIAL_CLASSES_DATA);
+        const initialDataWithGrades = INITIAL_CLASSES_DATA.map(cls => ({
+            ...cls,
+            students: cls.students.map(s => ({...s, grades: s.grades || {} }))
+          }));
+        setClasses(initialDataWithGrades);
         setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
-        localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+        localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(initialDataWithGrades));
         localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, INITIAL_CLASSES_DATA[0].id);
       }
     } catch (error) {
       console.error("Error al cargar datos desde localStorage:", error);
-      // Fallback to initial single class on error
-      setClasses(INITIAL_CLASSES_DATA);
+      const initialDataWithGrades = INITIAL_CLASSES_DATA.map(cls => ({
+            ...cls,
+            students: cls.students.map(s => ({...s, grades: s.grades || {} }))
+          }));
+      setClasses(initialDataWithGrades);
       setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
-      localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+      localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(initialDataWithGrades));
       localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, INITIAL_CLASSES_DATA[0].id);
     }
   }, []);
 
   useEffect(() => {
-    if (isClient && classes.length > 0) { // Should always be 1 class
+    if (isClient && classes.length > 0) { 
       localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(classes));
     }
   }, [classes, isClient]);
@@ -90,12 +102,6 @@ export default function HomePage() {
   
   const currentClass = classes.find(cls => cls.id === currentClassId) || null;
 
-  // handleSelectClass is no longer needed as there's only one class and it's pre-selected.
-  // If ClassSelector still calls it, it won't do much harm but could be removed from ClassSelector props.
-
-  // Class creation, editing, and deletion handlers are removed.
-  // handleShowAddClassModal, handleShowEditClassModal, handleCloseClassModal, handleSaveClass, handleDeleteClass removed.
-
   const handleAddStudent = useCallback((studentData: StudentFormData) => {
     if (!currentClassId) return;
     setIsLoadingStudent(true);
@@ -103,6 +109,7 @@ export default function HomePage() {
       id: `st_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       ...studentData,
       points: 0,
+      grades: {}, // Initialize grades for new student
     };
     setClasses(prev => prev.map(cls => 
       cls.id === currentClassId 
@@ -152,16 +159,35 @@ export default function HomePage() {
     }
   }, [currentClassId, currentClass?.students, toast]);
 
+  const handleUpdateStudentGrade = useCallback((studentId: string, evaluationType: EvaluationType, value: number | undefined) => {
+    if (!currentClassId) return;
+    setClasses(prev => prev.map(cls =>
+      cls.id === currentClassId
+        ? {
+            ...cls,
+            students: cls.students.map(s =>
+              s.id === studentId
+                ? {
+                    ...s,
+                    grades: {
+                      ...s.grades,
+                      [evaluationType]: value === undefined || isNaN(value) ? undefined : value,
+                    }
+                  }
+                : s
+            )
+          }
+        : cls
+    ));
+  }, [currentClassId]);
+
   const renderTabContent = () => {
-    if (!isClient || !currentClass) { // Simplified loading/empty state check
+    if (!isClient || !currentClass) { 
       return <div className="flex justify-center items-center h-64"><p>Cargando...</p></div>;
     }
     
-    // No need for "Bienvenido a ClassPulse" or "Selecciona una Clase" empty states as there's always one class selected.
-
     switch (activeTab) {
       case 'class-overview':
-        // Removed onShowEditClassModal and onDeleteClass as class editing/deletion is removed
         return <ClassOverviewTab currentClass={currentClass} />;
       case 'add-student':
         return <AddStudentTab currentClass={currentClass} onAddStudent={handleAddStudent} isLoading={isLoadingStudent} />;
@@ -171,6 +197,8 @@ export default function HomePage() {
         return <ManagePointsTab currentClass={currentClass} onUpdatePoints={handleUpdateStudentPoints} onResetPoints={handleResetStudentPoints} />;
       case 'leaderboard':
         return <LeaderboardTab currentClass={currentClass} />;
+      case 'grades':
+        return <GradesTab currentClass={currentClass} onUpdateGrade={handleUpdateStudentGrade} />;
       default:
         return null;
     }
@@ -180,7 +208,7 @@ export default function HomePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <AppHeader />
-        <p className="text-primary text-lg">Cargando ClassPulse...</p>
+        <p className="text-primary text-lg">Cargando Plataforma Educativa...</p>
       </div>
     );
   }
@@ -192,12 +220,8 @@ export default function HomePage() {
         <ClassSelector
           classes={classes}
           currentClassId={currentClassId}
-          // onSelectClass is technically not needed now, but ClassSelector might expect it.
-          // It won't break anything if it's called without effect.
-          onSelectClass={() => {}} // No-op as there's only one class
-          // onShowAddClassModal removed
+          onSelectClass={() => {}} 
         />
-        {/* AppTabs disabled prop will always be false as currentClassId is always set */}
         <AppTabs activeTab={activeTab} onSelectTab={setActiveTab} disabled={false} /> 
         
         {currentClassId && <CurrentClassInfoCard currentClass={currentClass} />}
@@ -206,9 +230,8 @@ export default function HomePage() {
           {renderTabContent()}
         </div>
       </main>
-      {/* ClassModal component removed */}
       <footer className="text-center py-6 border-t border-border mt-auto">
-        <p className="text-sm text-muted-foreground font-body">&copy; {new Date().getFullYear()} ClassPulse. Todos los derechos reservados.</p>
+        <p className="text-sm text-muted-foreground font-body">&copy; {new Date().getFullYear()} Plataforma Educativa. Todos los derechos reservados.</p>
       </footer>
     </div>
   );
