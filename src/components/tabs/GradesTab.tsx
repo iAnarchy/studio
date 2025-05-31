@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { Class, Evaluation, EvaluationType, Student } from '@/types';
+import type { Class, Evaluation, EvaluationType } from '@/types';
 import { EVALUATION_TYPES } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -10,9 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EmptyState from '@/components/ui/EmptyState';
-import { ClipboardCheck, BookOpen, PlusCircle, CalendarDays, Percent, Info } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { PlusCircle, Archive, ListChecks, Sparkles, Briefcase, PencilRuler, BookOpen } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,7 +19,6 @@ import * as z from 'zod';
 interface GradesTabProps {
   currentClass: Class | null;
   onAddEvaluation: (evaluationData: { name: string; type: EvaluationType; dueDate: string }) => void;
-  // onUpdateGrade: (studentId: string, evaluationId: string, value: number | undefined) => void; // Re-add if direct editing is needed
 }
 
 const evaluationSchema = z.object({
@@ -33,25 +31,11 @@ const evaluationSchema = z.object({
 
 type EvaluationFormData = z.infer<typeof evaluationSchema>;
 
-const formatDate = (dateString: string | undefined) => {
-  if (!dateString) return 'N/A';
-  // Ensure date string is treated as UTC to avoid timezone shifts
-  return new Date(dateString + 'T00:00:00Z').toLocaleDateString('es-ES', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC'
-  });
-};
-
-const calculateStudentAverage = (student: Student, evaluations: Evaluation[]): string => {
-  let totalScore = 0;
-  let count = 0;
-  evaluations.forEach(evaluation => {
-    const grade = student.assignmentData?.[evaluation.id]?.grade;
-    if (typeof grade === 'number' && !isNaN(grade)) {
-      totalScore += grade;
-      count++;
-    }
-  });
-  return count > 0 ? (totalScore / count).toFixed(1) : 'N/A';
+const EvaluationTypeIcons: Record<EvaluationType, React.ElementType> = {
+  'Tarea': ListChecks,
+  'Actividad': Sparkles,
+  'Proyecto': Briefcase,
+  'Examen': PencilRuler,
 };
 
 const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation }) => {
@@ -85,80 +69,79 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation }) 
       <EmptyState
         icon={<BookOpen className="w-16 h-16" />}
         title="Sin Clase Seleccionada"
-        message="Por favor, selecciona una clase para ver y gestionar las calificaciones."
+        message="Por favor, selecciona una clase para ver y gestionar las evaluaciones."
       />
     );
   }
   
-  const { evaluations, students } = currentClass;
+  const { evaluations } = currentClass;
+
+  const countsByType = EVALUATION_TYPES.reduce((acc, type) => {
+    acc[type] = evaluations.filter(e => e.type === type).length;
+    return acc;
+  }, {} as Record<EvaluationType, number>);
+
+  const totalEvaluations = evaluations.length;
 
   return (
     <div className="animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="font-headline text-2xl text-primary flex items-center">
-          <ClipboardCheck className="mr-2 h-7 w-7" />
-          Calificaciones de {currentClass.name}
+          <Archive className="mr-2 h-7 w-7" />
+          Resumen de Evaluaciones en {currentClass.name}
         </h2>
-        <Button onClick={() => setIsModalOpen(true)} className="font-body bg-accent text-accent-foreground hover:bg-accent/90">
+        <Button onClick={() => setIsModalOpen(true)} className="font-body bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto">
           <PlusCircle className="mr-2 h-5 w-5" />
-          Añadir Evaluación
+          Añadir Nueva Evaluación
         </Button>
       </div>
 
       {evaluations.length === 0 ? (
         <EmptyState
-          icon={<ClipboardCheck className="w-16 h-16" />}
+          icon={<Archive className="w-16 h-16" />}
           title="No Hay Evaluaciones Definidas"
-          message={`Añade evaluaciones (tareas, proyectos, etc.) a la clase "${currentClass.name}" para organizar las calificaciones aquí.`}
+          message={`Aún no se han añadido evaluaciones (tareas, proyectos, etc.) a la clase "${currentClass.name}".`}
           actions={<Button onClick={() => setIsModalOpen(true)} className="font-body">Añadir Primera Evaluación</Button>}
         />
-      ) : students.length === 0 ? (
-        <EmptyState
-          icon={<ClipboardCheck className="w-16 h-16" />}
-          title="No Hay Estudiantes en la Clase"
-          message={`Añade estudiantes a la clase "${currentClass.name}" para ver sus calificaciones.`}
-        />
       ) : (
-        <ScrollArea className="h-[65vh] border rounded-md">
-          <Table className="min-w-full"> {/* Removed table-fixed to allow auto layout */}
-            <TableHeader>
-              <TableRow>
-                <TableHead className="sticky left-0 bg-card z-10 font-semibold text-primary/80 min-w-[200px]">Estudiante</TableHead>
-                {evaluations.map(evaluation => (
-                  <TableHead key={evaluation.id} className="font-semibold text-primary/80 min-w-[220px] text-center">
-                    <div className="font-bold">{evaluation.name}</div>
-                    <div className="text-xs text-muted-foreground">{evaluation.type}</div>
-                    <div className="text-xs text-muted-foreground">Creado: {formatDate(evaluation.dateCreated)}</div>
-                    <div className="text-xs text-muted-foreground">Entrega: {formatDate(evaluation.dueDate)}</div>
-                  </TableHead>
-                ))}
-                <TableHead className="sticky right-0 bg-card z-10 font-semibold text-primary/80 min-w-[120px] text-center">
-                  <Percent className="inline-block mr-1 h-4 w-4" />
-                  Promedio Final
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map(student => (
-                <TableRow key={student.id}>
-                  <TableCell className="sticky left-0 bg-card z-10 font-medium">{student.name}</TableCell>
-                  {evaluations.map(evaluation => {
-                    const assignment = student.assignmentData?.[evaluation.id];
-                    const grade = assignment?.grade;
-                    return (
-                      <TableCell key={`${student.id}-${evaluation.id}`} className="text-center">
-                        {typeof grade === 'number' ? grade.toFixed(1) : '-'}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="sticky right-0 bg-card z-10 font-bold text-center">
-                    {calculateStudentAverage(student, evaluations)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+        <>
+          <Card className="mb-6 shadow-md">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-headline text-primary flex items-center">
+                <Archive className="mr-2 h-5 w-5" /> Total de Evaluaciones
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-primary">{totalEvaluations}</div>
+              <p className="text-sm text-muted-foreground">
+                {totalEvaluations === 1 ? 'evaluación registrada' : 'evaluaciones registradas'} en la clase.
+              </p>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {EVALUATION_TYPES.map(type => {
+              const IconComponent = EvaluationTypeIcons[type];
+              const count = countsByType[type];
+              return (
+                <Card key={type} className="shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-md font-headline text-primary flex items-center">
+                      <IconComponent className="mr-2 h-5 w-5 text-accent" />
+                      {type}s
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-primary">{count}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {count === 1 ? 'evaluación' : 'evaluaciones'} de este tipo.
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
