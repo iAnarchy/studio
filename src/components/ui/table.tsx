@@ -6,8 +6,8 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  // Removido overflow-auto de este div para que ScrollArea pueda manejarlo
-  <div className="relative w-full"> 
+  // Modificado: Eliminado w-full del div para permitir que la tabla se expanda
+  <div className="relative"> 
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
@@ -74,7 +74,8 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      // Modificado: Padding reducido para hacerlo más compacto
+      "h-10 px-3 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -88,7 +89,11 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      // Modificado: Padding reducido para hacerlo más compacto
+      "p-2 align-middle [&:has([role=checkbox])]:pr-0", 
+      className
+    )}
     {...props}
   />
 ))
