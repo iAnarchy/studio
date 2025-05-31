@@ -117,16 +117,16 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
               <TableRow>
                 <TableHead className="w-[200px] font-semibold text-primary/80 sticky left-0 bg-card z-10">Estudiante</TableHead>
                 {evaluations.map(evaluation => (
-                  <TableHead key={evaluation.id} className="text-center font-semibold text-primary/80 min-w-[150px]">
+                  <TableHead key={evaluation.id} className="text-center font-semibold text-primary/80 min-w-[220px]">
                     {evaluation.name}
                     <div className="text-xs text-muted-foreground font-normal">
                       ({evaluation.type})
                     </div>
                     <div className="text-xs text-muted-foreground font-normal">
-                      Creado: {new Date(evaluation.dateCreated + 'T00:00:00Z').toLocaleDateString()}
+                      Creado: {new Date(evaluation.dateCreated + 'T00:00:00Z').toLocaleDateString('es-ES', { timeZone: 'UTC' })}
                     </div>
                      <div className="text-xs text-muted-foreground font-normal">
-                      Entrega: {new Date(evaluation.dueDate + 'T00:00:00Z').toLocaleDateString()}
+                      Entrega: {new Date(evaluation.dueDate + 'T00:00:00Z').toLocaleDateString('es-ES', { timeZone: 'UTC' })}
                     </div>
                   </TableHead>
                 ))}
@@ -242,3 +242,4 @@ const UsersIcon: React.FC<UsersIconProps> = ({ className }) => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
   </svg>
 );
+
