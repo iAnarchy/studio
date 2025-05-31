@@ -112,7 +112,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         />
       ) : (
         <ScrollArea className="h-[65vh] border rounded-md">
-          <Table className="min-w-full table-fixed">
+          <Table className="min-w-full">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[200px] font-semibold text-primary/80 sticky left-0 bg-card z-10">Estudiante</TableHead>
@@ -243,3 +243,5 @@ const UsersIcon: React.FC<UsersIconProps> = ({ className }) => (
   </svg>
 );
 
+
+    
