@@ -64,8 +64,18 @@ export default function HomePage() {
            setClasses(parsedClasses);
            const storedCurrentClassId = localStorage.getItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
            setCurrentClassId(storedCurrentClassId && parsedClasses.find(c => c.id === storedCurrentClassId) ? storedCurrentClassId : parsedClasses[0].id);
-        } else {
-          
+        } else if (parsedClasses.length === 0 && INITIAL_CLASSES_DATA.length > 0) {
+          // If local storage is empty but initial data exists, use initial data.
+          setClasses(INITIAL_CLASSES_DATA);
+          setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
+          localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
+          localStorage.setItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY, INITIAL_CLASSES_DATA[0].id);
+        } else if (parsedClasses.length > 0) {
+            // Fallback if the specific initial class is not found but other classes exist.
+            setClasses(parsedClasses);
+            setCurrentClassId(parsedClasses[0].id);
+        }
+         else {
           setClasses(INITIAL_CLASSES_DATA);
           setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
           localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
@@ -88,7 +98,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (isClient) { // Save to localStorage whenever classes change and client is ready
+    if (isClient) { 
       localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(classes));
     }
   }, [classes, isClient]);
@@ -106,12 +116,11 @@ export default function HomePage() {
       // Editing the current (and only) class
       setClasses(prevClasses => prevClasses.map(cls =>
         cls.id === classIdToUpdate
-          ? { ...cls, ...formData } // Update name, subject, description
+          ? { ...cls, ...formData } 
           : cls
       ));
       toast({ title: "Clase Actualizada", description: "Los detalles de la clase han sido actualizados." });
     } else {
-      // Logic for adding a new class (currently not exposed via UI but modal supports it)
       const newClass: Class = {
         id: `cls_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         ...formData,
@@ -158,6 +167,7 @@ export default function HomePage() {
       console.error("[handleRemoveStudent] No current class ID to remove student from.");
       return;
     }
+    
     const activeClass = classes.find(cls => cls.id === currentClassId);
     if (!activeClass) {
       console.error("[handleRemoveStudent] Current class not found with ID:", currentClassId, "Available class IDs:", classes.map(c => c.id));
@@ -172,11 +182,12 @@ export default function HomePage() {
     }
     console.log('[handleRemoveStudent] Found studentToRemove:', studentToRemove.name, 'with ID:', studentToRemove.id);
 
-    if (window.confirm(`¿Estás seguro de eliminar a ${studentToRemove.name}?`)) {
-      console.log('[handleRemoveStudent] Confirmed removal for studentId:', studentId);
+    // TEMPORARILY REMOVED FOR DIAGNOSTICS
+    // if (window.confirm(`¿Estás seguro de eliminar a ${studentToRemove.name}?`)) {
+      console.log('[handleRemoveStudent] Proceeding with removal for studentId (confirmation bypassed):', studentId);
       setClasses(prevClasses => {
         console.log('[handleRemoveStudent] setClasses - prevClasses count:', prevClasses.length, 'currentClassId for update:', currentClassId);
-        return prevClasses.map(cls => {
+        const updatedClasses = prevClasses.map(cls => {
           if (cls.id === currentClassId) {
             console.log('[handleRemoveStudent] setClasses - Updating class:', cls.name, 'ID:', cls.id, '. Filtering studentId:', studentId);
             const initialStudentCount = cls.students.length;
@@ -187,20 +198,22 @@ export default function HomePage() {
               }
               return shouldKeep;
             });
-            if (newStudents.length === initialStudentCount && initialStudentCount > 0) {
+            if (newStudents.length === initialStudentCount && initialStudentCount > 0 && !newStudents.find(s => s.id === studentId)) {
                 console.warn('[handleRemoveStudent] setClasses - Student filter had no effect. Student ID', studentId, 'not found for filtering in class instance during map. Student IDs in this instance:', cls.students.map(st => st.id));
-            } else {
+            } else if (newStudents.length < initialStudentCount) {
                 console.log('[handleRemoveStudent] setClasses - Student list for class', cls.name, 'changed from', initialStudentCount, 'to', newStudents.length);
             }
             return { ...cls, students: newStudents };
           }
           return cls;
         });
+        console.log('[handleRemoveStudent] setClasses - updatedClasses:', JSON.parse(JSON.stringify(updatedClasses))); // Log new state
+        return updatedClasses;
       });
       toast({ title: "Estudiante Eliminado", description: `${studentToRemove.name} ha sido eliminado.`, variant: "destructive" });
-    } else {
-      console.log('[handleRemoveStudent] Cancelled removal for studentId:', studentId);
-    }
+    // } else {
+    //   console.log('[handleRemoveStudent] Cancelled removal for studentId:', studentId);
+    // }
   }, [classes, currentClassId, toast]);
 
   const handleUpdateStudentPoints = useCallback((studentId: string, pointsToAdd: number) => {
@@ -361,11 +374,11 @@ export default function HomePage() {
         <ClassSelector
           classes={classes}
           currentClassId={currentClassId}
-          onSelectClass={() => {}} 
+          onSelectClass={(id) => setCurrentClassId(id)}  // Ensure class selection updates state
         />
-        <AppTabs activeTab={activeTab} onSelectTab={setActiveTab} disabled={false} />
+        <AppTabs activeTab={activeTab} onSelectTab={setActiveTab} disabled={!currentClassId} />
 
-        {currentClassId && <CurrentClassInfoCard currentClass={currentClass} />}
+        {currentClassId && currentClass && <CurrentClassInfoCard currentClass={currentClass} />}
 
         <div className="bg-card p-4 md:p-6 rounded-lg shadow-lg min-h-[300px]">
           {renderTabContent()}
