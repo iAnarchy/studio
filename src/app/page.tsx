@@ -152,19 +152,32 @@ export default function HomePage() {
   }, [currentClassId, toast]);
 
   const handleRemoveStudent = useCallback((studentId: string) => {
-    if (!currentClassId) return;
-    const studentToRemove = currentClass?.students.find(s => s.id === studentId);
-    if (!studentToRemove) return;
+    if (!currentClassId) {
+      console.error("No current class ID to remove student from.");
+      return;
+    }
+    // Get the most up-to-date activeClass directly from 'classes' inside the callback
+    const activeClass = classes.find(cls => cls.id === currentClassId);
+    if (!activeClass) {
+      console.error("Current class not found when trying to remove student.");
+      return;
+    }
+
+    const studentToRemove = activeClass.students.find(s => s.id === studentId);
+    if (!studentToRemove) {
+      console.warn("Student to remove not found in the current class. This might happen if the student was already removed or the ID is incorrect.");
+      return;
+    }
 
     if (window.confirm(`¿Estás seguro de eliminar a ${studentToRemove.name}?`)) {
-      setClasses(prev => prev.map(cls =>
+      setClasses(prevClasses => prevClasses.map(cls =>
         cls.id === currentClassId
           ? { ...cls, students: cls.students.filter(s => s.id !== studentId) }
           : cls
       ));
       toast({ title: "Estudiante Eliminado", description: `${studentToRemove.name} ha sido eliminado.`, variant: "destructive" });
     }
-  }, [currentClassId, currentClass?.students, toast]);
+  }, [classes, currentClassId, toast]);
 
   const handleUpdateStudentPoints = useCallback((studentId: string, pointsToAdd: number) => {
     if (!currentClassId) return;
@@ -245,7 +258,7 @@ export default function HomePage() {
                     assignmentData: {
                       ...s.assignmentData,
                       [evaluationId]: {
-                        ...(s.assignmentData[evaluationId] || { status: 'Pendiente' }),
+                        ...(s.assignmentData[evaluationId] || { status: 'Pendiente' as SubmissionStatus }),
                         grade: value === undefined || isNaN(value) ? undefined : value,
                       }
                     }
