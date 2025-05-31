@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Class, Evaluation, EvaluationType, Student } from '@/types';
-import { EVALUATION_TYPES, SUBMISSION_STATUS_OPTIONS } from '@/types'; // SUBMISSION_STATUS_OPTIONS no se usa aquí pero se importa
+import { EVALUATION_TYPES } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EmptyState from '@/components/ui/EmptyState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, BookOpen, Users, Layers, FileText, Activity, Briefcase, CheckSquare, ListChecks, CalendarDays } from 'lucide-react';
+import { PlusCircle, BookOpen, Users, ListChecks, FileText, Activity, Briefcase, CheckSquare, Layers } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 interface GradesTabProps {
   currentClass: Class | null;
   onAddEvaluation: (evaluationData: { name: string; type: EvaluationType; dueDate: string }) => void;
-  onUpdateGrade: (studentId: string, evaluationId: string, value: number | undefined) => void;
+  // onUpdateGrade prop is removed as direct grade editing is removed from this specific table view
 }
 
 const evaluationSchema = z.object({
@@ -41,7 +41,7 @@ const evaluationTypeIcons: Record<EvaluationType, React.ElementType> = {
   'Examen': CheckSquare,
 };
 
-const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, onUpdateGrade }) => {
+const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { control, handleSubmit, reset, formState: { errors } } = useForm<EvaluationFormData>({
     resolver: zodResolver(evaluationSchema),
@@ -79,7 +79,23 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
   
   const { evaluations, students } = currentClass;
 
-  const calculateStudentAverage = (student: Student): string => {
+  const calculateStudentAverageForType = (student: Student, type: EvaluationType): string => {
+    let totalScore = 0;
+    let count = 0;
+    const typeEvaluations = evaluations.filter(ev => ev.type === type);
+    if (typeEvaluations.length === 0) return 'N/A';
+
+    typeEvaluations.forEach(evaluation => {
+      const grade = student.assignmentData?.[evaluation.id]?.grade;
+      if (typeof grade === 'number' && !isNaN(grade)) {
+        totalScore += grade;
+        count++;
+      }
+    });
+    return count > 0 ? (totalScore / count).toFixed(2) : 'N/A';
+  };
+  
+  const calculateStudentOverallAverage = (student: Student): string => {
     let totalScore = 0;
     let count = 0;
     evaluations.forEach(evaluation => {
@@ -92,6 +108,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
     return count > 0 ? (totalScore / count).toFixed(2) : 'N/A';
   };
 
+  const evaluationsCount = evaluations.length;
   const tareasCount = evaluations.filter(ev => ev.type === 'Tarea').length;
   const actividadesCount = evaluations.filter(ev => ev.type === 'Actividad').length;
   const proyectosCount = evaluations.filter(ev => ev.type === 'Proyecto').length;
@@ -102,7 +119,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="font-headline text-2xl text-primary flex items-center">
           <ListChecks className="mr-2 h-7 w-7" />
-          Calificaciones en {currentClass.name}
+          Resumen de Calificaciones en {currentClass.name}
         </h2>
         <Button onClick={() => setIsModalOpen(true)} className="font-body bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto">
           <PlusCircle className="mr-2 h-5 w-5" />
@@ -110,7 +127,18 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <Card className="bg-card hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground font-body">Total de Evaluaciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary font-headline flex items-center">
+              <Layers className="w-6 h-6 mr-2 text-accent" />
+              {evaluationsCount}
+            </div>
+          </CardContent>
+        </Card>
         <Card className="bg-card hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground font-body">Tareas ({tareasCount} tareas)</CardTitle>
@@ -157,13 +185,13 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         </Card>
       </div>
       
-      {students.length === 0 && evaluations.length > 0 ? (
+      {students.length === 0 ? (
         <EmptyState
           icon={<Users className="w-16 h-16" />}
           title="No Hay Estudiantes"
-          message={`Añade estudiantes a la clase "${currentClass.name}" para poder registrar calificaciones.`}
+          message={`Añade estudiantes a la clase "${currentClass.name}" para poder ver sus promedios.`}
         />
-      ) : evaluations.length === 0 ? (
+      ) : evaluations.length === 0 && students.length > 0 ? (
          <EmptyState
           icon={<ListChecks className="w-16 h-16" />}
           title="No Hay Evaluaciones Definidas"
@@ -176,16 +204,9 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[200px] sticky left-0 bg-card z-10 font-semibold text-primary/80">Estudiante</TableHead>
-                {evaluations.map(evaluation => (
-                  <TableHead key={evaluation.id} className="min-w-[220px] text-center font-semibold text-primary/80">
-                    <div className="font-semibold">{evaluation.name}</div>
-                    <div className="text-xs text-muted-foreground">({evaluation.type})</div>
-                    <div className="text-xs text-muted-foreground">
-                      Creado: {new Date(evaluation.dateCreated + 'T00:00:00').toLocaleDateString('es-ES', { timeZone: 'UTC' })}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Entrega: {new Date(evaluation.dueDate + 'T00:00:00').toLocaleDateString('es-ES', { timeZone: 'UTC' })}
-                    </div>
+                {EVALUATION_TYPES.map(type => (
+                  <TableHead key={type} className="min-w-[150px] text-center font-semibold text-primary/80">
+                    Prom. {type}
                   </TableHead>
                 ))}
                 <TableHead className="min-w-[150px] text-center sticky right-0 bg-card z-10 font-semibold text-primary/80">Promedio Final</TableHead>
@@ -193,33 +214,20 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
             </TableHeader>
             <TableBody>
               {students.map(student => {
-                const studentAverage = calculateStudentAverage(student);
+                const studentOverallAverage = calculateStudentOverallAverage(student);
                 return (
                   <TableRow key={student.id}>
                     <TableCell className="font-medium sticky left-0 bg-card z-10">{student.name}</TableCell>
-                    {evaluations.map(evaluation => {
-                      const assignmentEntry = student.assignmentData?.[evaluation.id];
+                    {EVALUATION_TYPES.map(type => {
+                      const averageForType = calculateStudentAverageForType(student, type);
                       return (
-                        <TableCell key={evaluation.id} className="text-center">
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100" 
-                            step="0.1"
-                            value={assignmentEntry?.grade ?? ''}
-                            onChange={(e) => {
-                              const rawValue = e.target.value;
-                              const numValue = parseFloat(rawValue);
-                              onUpdateGrade(student.id, evaluation.id, rawValue === '' ? undefined : numValue);
-                            }}
-                            className="max-w-[80px] mx-auto text-center"
-                            placeholder="-"
-                          />
+                        <TableCell key={type} className="text-center">
+                          {averageForType}
                         </TableCell>
                       );
                     })}
                     <TableCell className="text-center font-semibold sticky right-0 bg-card z-10">
-                      {studentAverage}
+                      {studentOverallAverage}
                     </TableCell>
                   </TableRow>
                 );
@@ -292,4 +300,6 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
 };
 
 export default GradesTab;
+    
+
     
