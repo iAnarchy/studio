@@ -34,11 +34,13 @@ const evaluationSchema = z.object({
 type EvaluationFormData = z.infer<typeof evaluationSchema>;
 
 
-const calculateAverage = (assignmentData: Student['assignmentData'] | undefined): string => {
-  if (!assignmentData) return 'N/A';
-  const validGrades = Object.values(assignmentData)
-    .map(data => data?.grade)
+const calculateAverage = (assignmentData: Student['assignmentData'] | undefined, evaluations: Evaluation[]): string => {
+  if (!assignmentData || evaluations.length === 0) return 'N/A';
+  
+  const validGrades = evaluations
+    .map(evaluation => assignmentData[evaluation.id]?.grade)
     .filter(g => typeof g === 'number' && !isNaN(g)) as number[];
+    
   if (validGrades.length === 0) return 'N/A';
   const sum = validGrades.reduce((acc, curr) => acc + curr, 0);
   return (sum / validGrades.length).toFixed(2);
@@ -104,12 +106,12 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         />
       ) : students.length === 0 ? (
         <EmptyState
-          icon={<Users className="w-16 h-16" />}
+          icon={<UsersIcon className="w-16 h-16" />}
           title="No Hay Estudiantes en la Clase"
           message={`Añade estudiantes a la clase "${currentClass.name}" para poder asignar calificaciones.`}
         />
       ) : (
-        <ScrollArea className="max-h-[calc(100vh-420px)] border rounded-md">
+        <ScrollArea className="h-[65vh] border rounded-md">
           <Table className="min-w-full">
             <TableHeader>
               <TableRow>
@@ -121,10 +123,10 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
                       ({evaluation.type})
                     </div>
                     <div className="text-xs text-muted-foreground font-normal">
-                      Creado: {new Date(evaluation.dateCreated).toLocaleDateString()}
+                      Creado: {new Date(evaluation.dateCreated + 'T00:00:00').toLocaleDateString()}
                     </div>
                      <div className="text-xs text-muted-foreground font-normal">
-                      Entrega: {new Date(evaluation.dueDate).toLocaleDateString()}
+                      Entrega: {new Date(evaluation.dueDate + 'T00:00:00').toLocaleDateString()}
                     </div>
                   </TableHead>
                 ))}
@@ -154,7 +156,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
                     </TableCell>
                   ))}
                   <TableCell className="text-right font-semibold sticky right-0 bg-card z-10">
-                    {calculateAverage(student.assignmentData)}
+                    {calculateAverage(student.assignmentData, evaluations)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -231,7 +233,7 @@ interface UsersIconProps {
   className?: string;
 }
 
-const Users: React.FC<UsersIconProps> = ({ className }) => (
+const UsersIcon: React.FC<UsersIconProps> = ({ className }) => ( 
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
     <circle cx="9" cy="7" r="4"/>
@@ -239,3 +241,5 @@ const Users: React.FC<UsersIconProps> = ({ className }) => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
   </svg>
 );
+
+    

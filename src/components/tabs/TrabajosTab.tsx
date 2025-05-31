@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EmptyState from '@/components/ui/EmptyState';
-import { Book, Users, ClipboardList } from 'lucide-react'; // ClipboardList for assignments
+import { Book, Users, ClipboardList } from 'lucide-react'; 
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface TrabajosTabProps {
@@ -50,7 +50,6 @@ const TrabajosTab: React.FC<TrabajosTabProps> = ({ currentClass, onUpdateGrade, 
     );
   }
 
-  // Create a flat list of student-evaluation pairs for table rows
   const studentEvaluationPairs: Array<{ student: Student; evaluation: Evaluation }> = [];
   students.forEach(student => {
     evaluations.forEach(evaluation => {
@@ -64,7 +63,7 @@ const TrabajosTab: React.FC<TrabajosTabProps> = ({ currentClass, onUpdateGrade, 
         <ClipboardList className="mr-2 h-7 w-7" />
         Seguimiento de Trabajos en {currentClass.name}
       </h2>
-      <ScrollArea className="max-h-[calc(100vh-380px)] border rounded-md">
+      <ScrollArea className="h-[65vh] border rounded-md">
         <Table className="min-w-full">
           <TableHeader>
             <TableRow>
@@ -77,7 +76,7 @@ const TrabajosTab: React.FC<TrabajosTabProps> = ({ currentClass, onUpdateGrade, 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {studentEvaluationPairs.map(({ student, evaluation }, index) => {
+            {studentEvaluationPairs.map(({ student, evaluation }) => {
               const assignmentEntry = student.assignmentData?.[evaluation.id];
               const currentStatus = assignmentEntry?.status || 'Pendiente';
 
@@ -89,7 +88,7 @@ const TrabajosTab: React.FC<TrabajosTabProps> = ({ currentClass, onUpdateGrade, 
                     <Input
                       type="number"
                       min="0"
-                      max="100" // Or your max grade
+                      max="100" 
                       step="0.1"
                       value={assignmentEntry?.grade ?? ''}
                       onChange={(e) => {
@@ -101,8 +100,8 @@ const TrabajosTab: React.FC<TrabajosTabProps> = ({ currentClass, onUpdateGrade, 
                       placeholder="-"
                     />
                   </TableCell>
-                  <TableCell className="text-center">{new Date(evaluation.dateCreated).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-center">{new Date(evaluation.dueDate).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-center">{new Date(evaluation.dateCreated + 'T00:00:00').toLocaleDateString()}</TableCell>
+                  <TableCell className="text-center">{new Date(evaluation.dueDate + 'T00:00:00').toLocaleDateString()}</TableCell>
                   <TableCell className="text-center sticky right-0 bg-card z-10">
                     <Select
                       value={currentStatus}
@@ -134,3 +133,5 @@ const TrabajosTab: React.FC<TrabajosTabProps> = ({ currentClass, onUpdateGrade, 
 };
 
 export default TrabajosTab;
+
+    
