@@ -35,7 +35,7 @@ type EvaluationFormData = z.infer<typeof evaluationSchema>;
 
 
 const calculateAverage = (assignmentData: Student['assignmentData'] | undefined, evaluations: Evaluation[]): string => {
-  if (!assignmentData || evaluations.length === 0) return 'N/A';
+  if (!assignmentData || !evaluations || evaluations.length === 0) return 'N/A';
   
   const validGrades = evaluations
     .map(evaluation => assignmentData[evaluation.id]?.grade)
@@ -112,7 +112,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         />
       ) : (
         <ScrollArea className="h-[65vh] border rounded-md">
-          <Table className="min-w-full">
+          <Table className="min-w-full table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[200px] font-semibold text-primary/80 sticky left-0 bg-card z-10">Estudiante</TableHead>
@@ -123,10 +123,10 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
                       ({evaluation.type})
                     </div>
                     <div className="text-xs text-muted-foreground font-normal">
-                      Creado: {new Date(evaluation.dateCreated + 'T00:00:00').toLocaleDateString()}
+                      Creado: {new Date(evaluation.dateCreated + 'T00:00:00Z').toLocaleDateString()}
                     </div>
                      <div className="text-xs text-muted-foreground font-normal">
-                      Entrega: {new Date(evaluation.dueDate + 'T00:00:00').toLocaleDateString()}
+                      Entrega: {new Date(evaluation.dueDate + 'T00:00:00Z').toLocaleDateString()}
                     </div>
                   </TableHead>
                 ))}
@@ -233,6 +233,7 @@ interface UsersIconProps {
   className?: string;
 }
 
+// Renamed to avoid conflict if Users from lucide-react is imported directly
 const UsersIcon: React.FC<UsersIconProps> = ({ className }) => ( 
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -241,5 +242,3 @@ const UsersIcon: React.FC<UsersIconProps> = ({ className }) => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
   </svg>
 );
-
-    
