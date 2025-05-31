@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Class, Student, TabKey, EvaluationType, Evaluation, SubmissionStatus } from '@/types';
 import { StudentFormData } from '@/components/student/StudentForm';
+import { ClassFormData } from '@/components/class/ClassModal'; // Import ClassFormData
 import { INITIAL_CLASSES_DATA, NAV_TAB_ITEMS } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,7 +13,8 @@ import AppHeader from '@/components/layout/AppHeader';
 import ClassSelector from '@/components/class/ClassSelector';
 import AppTabs from '@/components/navigation/AppTabs';
 import CurrentClassInfoCard from '@/components/class/CurrentClassInfoCard';
-// Button removed as it's not used directly here anymore for class creation
+import ClassModal from '@/components/class/ClassModal';
+
 
 // Tab Content Components
 import ClassOverviewTab from '@/components/tabs/ClassOverviewTab';
@@ -35,6 +37,10 @@ export default function HomePage() {
   const [isLoadingStudent, setIsLoadingStudent] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [classModalInitialData, setClassModalInitialData] = useState<Class | null>(null);
+
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,15 +49,14 @@ export default function HomePage() {
       const storedClassesRaw = localStorage.getItem(CLASS_PULSE_DATA_KEY);
       if (storedClassesRaw) {
         let parsedClasses = JSON.parse(storedClassesRaw) as Class[];
-        // Ensure data structure consistency
+        
         parsedClasses = parsedClasses.map(cls => ({
           ...cls,
           evaluations: cls.evaluations || [],
           students: cls.students.map(s => ({
             ...s,
             assignmentData: s.assignmentData || {},
-            // Migrate old grades structure if present
-            grades: undefined, // remove old grades property
+            grades: undefined, 
           }))
         }));
 
@@ -60,7 +65,7 @@ export default function HomePage() {
            const storedCurrentClassId = localStorage.getItem(CLASS_PULSE_CURRENT_CLASS_ID_KEY);
            setCurrentClassId(storedCurrentClassId && parsedClasses.find(c => c.id === storedCurrentClassId) ? storedCurrentClassId : parsedClasses[0].id);
         } else {
-          // If stored data is invalid or empty, reset to initial data
+          
           setClasses(INITIAL_CLASSES_DATA);
           setCurrentClassId(INITIAL_CLASSES_DATA[0].id);
           localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(INITIAL_CLASSES_DATA));
@@ -95,6 +100,38 @@ export default function HomePage() {
   }, [currentClassId, isClient]);
 
   const currentClass = classes.find(cls => cls.id === currentClassId) || null;
+
+  const handleSaveClass = useCallback((formData: ClassFormData, classIdToUpdate?: string) => {
+    if (classIdToUpdate && currentClass && classIdToUpdate === currentClass.id) {
+      // Editing the current (and only) class
+      setClasses(prevClasses => prevClasses.map(cls =>
+        cls.id === classIdToUpdate
+          ? { ...cls, ...formData } // Update name, subject, description
+          : cls
+      ));
+      toast({ title: "Clase Actualizada", description: "Los detalles de la clase han sido actualizados." });
+    } else {
+      // Logic for adding a new class (currently not exposed via UI but modal supports it)
+      const newClass: Class = {
+        id: `cls_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        ...formData,
+        students: [],
+        evaluations: [],
+      };
+      setClasses(prev => [...prev, newClass]);
+      toast({ title: "Clase Creada", description: `${formData.name} ha sido creada.` });
+    }
+    setIsClassModalOpen(false);
+    setClassModalInitialData(null);
+  }, [currentClass, toast]);
+
+  const openEditClassModal = useCallback(() => {
+    if (currentClass) {
+      setClassModalInitialData(currentClass);
+      setIsClassModalOpen(true);
+    }
+  }, [currentClass]);
+
 
   const handleAddStudent = useCallback((studentData: StudentFormData) => {
     if (!currentClassId) return;
@@ -158,7 +195,7 @@ export default function HomePage() {
     const newEvaluation: Evaluation = {
       id: `eval_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       ...evaluationData,
-      dateCreated: new Date().toISOString().split('T')[0], // Store as YYYY-MM-DD
+      dateCreated: new Date().toISOString().split('T')[0], 
     };
     setClasses(prev => prev.map(cls =>
       cls.id === currentClassId
@@ -253,7 +290,7 @@ export default function HomePage() {
 
     switch (activeTab) {
       case 'class-overview':
-        return <ClassOverviewTab currentClass={currentClass} />;
+        return <ClassOverviewTab currentClass={currentClass} onEditClass={openEditClassModal} />;
       case 'add-student':
         return <AddStudentTab currentClass={currentClass} onAddStudent={handleAddStudent} isLoading={isLoadingStudent} />;
       case 'view-students':
@@ -263,7 +300,7 @@ export default function HomePage() {
       case 'leaderboard':
         return <LeaderboardTab currentClass={currentClass} />;
       case 'grades':
-        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} />;
+        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} onUpdateGrade={handleUpdateStudentGrade} />;
       case 'trabajos':
         return <TrabajosTab currentClass={currentClass} onUpdateGrade={handleUpdateStudentGrade} onUpdateSubmissionStatus={handleUpdateStudentSubmissionStatus} onDeleteEvaluation={handleDeleteEvaluation} />;
       default:
@@ -287,7 +324,7 @@ export default function HomePage() {
         <ClassSelector
           classes={classes}
           currentClassId={currentClassId}
-          onSelectClass={() => {}} // No-op as class selection is fixed
+          onSelectClass={() => {}} 
         />
         <AppTabs activeTab={activeTab} onSelectTab={setActiveTab} disabled={false} />
 
@@ -300,6 +337,15 @@ export default function HomePage() {
       <footer className="text-center py-6 border-t border-border mt-auto">
         <p className="text-sm text-muted-foreground font-body">&copy; {new Date().getFullYear()} Plataforma Educativa. Todos los derechos reservados.</p>
       </footer>
+      <ClassModal
+        isOpen={isClassModalOpen}
+        onClose={() => {
+          setIsClassModalOpen(false);
+          setClassModalInitialData(null); 
+        }}
+        onSave={handleSaveClass}
+        editingClass={classModalInitialData}
+      />
     </div>
   );
 }

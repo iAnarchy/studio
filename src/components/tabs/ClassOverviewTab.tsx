@@ -3,15 +3,15 @@
 
 import React from 'react';
 import type { Class } from '@/types';
-// Button removed as actions are removed
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Star, BarChartBig, Trophy } from 'lucide-react'; // Edit3, Trash2 removed
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Users, Star, BarChartBig, Trophy, Edit3, Settings } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import AiActivitySuggester from '@/components/ai/AiActivitySuggester';
 
 interface ClassOverviewTabProps {
   currentClass: Class | null;
-  // onShowEditClassModal and onDeleteClass props removed
+  onEditClass: () => void;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
@@ -28,12 +28,12 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
   </Card>
 );
 
-const ClassOverviewTab: React.FC<ClassOverviewTabProps> = ({ currentClass }) => {
+const ClassOverviewTab: React.FC<ClassOverviewTabProps> = ({ currentClass, onEditClass }) => {
   if (!currentClass) {
     return (
       <EmptyState 
         icon={<BarChartBig className="w-16 h-16" />}
-        title="Cargando Resumen de Clase" // Changed title as class selection is fixed
+        title="Cargando Resumen de Clase"
         message="La información de la clase se está cargando."
       />
     );
@@ -52,10 +52,29 @@ const ClassOverviewTab: React.FC<ClassOverviewTabProps> = ({ currentClass }) => 
         <StatCard title="Promedio Puntos" value={avgPoints} icon={BarChartBig} />
         <StatCard title="Mejor Puntaje" value={topStudent ? topStudent.points : 'N/A'} icon={Trophy} />
       </div>
+      
+      <Card className="shadow-md border-l-4 border-primary">
+        <CardHeader>
+          <CardTitle className="font-headline text-xl text-primary flex items-center">
+            <Settings className="mr-2 h-6 w-6" />
+            Acciones de Clase
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="font-body text-muted-foreground mb-4">
+            Modifica los detalles generales de tu clase.
+          </p>
+        </CardContent>
+        <CardFooter>
+          <Button onClick={onEditClass} variant="outline" className="font-body text-primary border-primary hover:bg-primary/10 w-full sm:w-auto">
+            <Edit3 className="mr-2 h-5 w-5" />
+            Editar Detalles de Clase
+          </Button>
+        </CardFooter>
+      </Card>
 
       <AiActivitySuggester grade={students[0]?.grade || "General"} subject={currentClass.subject} />
       
-      {/* "Acciones de Clase" Card removed as editing/deleting classes is no longer possible */}
     </div>
   );
 };
