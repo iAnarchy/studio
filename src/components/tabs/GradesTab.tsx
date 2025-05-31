@@ -11,12 +11,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EmptyState from '@/components/ui/EmptyState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Archive, ClipboardCheck, BookOpen, Users, CalendarDays } from 'lucide-react';
+import { PlusCircle, BookOpen, Users, Layers, FileText, Activity, Briefcase, CheckSquare, ListChecks, CalendarDays } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface GradesTabProps {
   currentClass: Class | null;
@@ -33,6 +31,21 @@ const evaluationSchema = z.object({
 });
 
 type EvaluationFormData = z.infer<typeof evaluationSchema>;
+
+const evaluationTypeIcons: Record<EvaluationType, React.ElementType> = {
+  'Tarea': FileText,
+  'Actividad': Activity,
+  'Proyecto': Briefcase,
+  'Examen': CheckSquare,
+};
+
+const evaluationDisplayConfig: Record<EvaluationType, { title: string; inParenthesesIfCount?: string; defaultIcon: React.ElementType }> = {
+  'Tarea': { title: 'Tareas', inParenthesesIfCount: 'tareas', defaultIcon: FileText },
+  'Actividad': { title: 'Actividades', inParenthesesIfCount: 'actividades', defaultIcon: Activity },
+  'Proyecto': { title: 'Proyectos', inParenthesesIfCount: 'proyectos', defaultIcon: Briefcase },
+  'Examen': { title: 'Examen', defaultIcon: CheckSquare }, // Special case for title
+};
+
 
 const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, onUpdateGrade }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,20 +73,6 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
     setIsModalOpen(false);
   };
 
-  const calculateAverage = (student: Student, evaluations: Evaluation[]): string => {
-    let totalPoints = 0;
-    let count = 0;
-    evaluations.forEach(evaluation => {
-      const grade = student.assignmentData?.[evaluation.id]?.grade;
-      if (typeof grade === 'number' && !isNaN(grade)) {
-        totalPoints += grade;
-        count++;
-      }
-    });
-    return count > 0 ? (totalPoints / count).toFixed(2) : 'N/A';
-  };
-
-
   if (!currentClass) {
     return (
       <EmptyState
@@ -90,8 +89,8 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="font-headline text-2xl text-primary flex items-center">
-          <ClipboardCheck className="mr-2 h-7 w-7" />
-          Calificaciones en {currentClass.name}
+          <ListChecks className="mr-2 h-7 w-7" />
+          Resumen de Evaluaciones en {currentClass.name}
         </h2>
         <Button onClick={() => setIsModalOpen(true)} className="font-body bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto">
           <PlusCircle className="mr-2 h-5 w-5" />
@@ -99,7 +98,45 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         </Button>
       </div>
 
-      {students.length === 0 ? (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+        <Card className="bg-primary/10 border-primary">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-primary/80 font-body">Total Evaluaciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary font-headline flex items-center">
+              <Layers className="w-6 h-6 mr-2 text-accent" />
+              {evaluations.length}
+            </div>
+          </CardContent>
+        </Card>
+        {EVALUATION_TYPES.map(type => {
+          const count = evaluations.filter(ev => ev.type === type).length;
+          const config = evaluationDisplayConfig[type];
+          const Icon = config.defaultIcon || ListChecks;
+          
+          let titleText = config.title;
+          if (config.inParenthesesIfCount) {
+            titleText = `${config.title} (${count} ${config.inParenthesesIfCount})`;
+          }
+
+          return (
+            <Card key={type} className="bg-card hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground font-body">{titleText}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary font-headline flex items-center">
+                  <Icon className="w-6 h-6 mr-2 text-accent" />
+                  {count}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+      
+      {students.length === 0 && evaluations.length > 0 ? (
         <EmptyState
           icon={<Users className="w-16 h-16" />}
           title="No Hay Estudiantes"
@@ -107,64 +144,17 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         />
       ) : evaluations.length === 0 ? (
          <EmptyState
-          icon={<Archive className="w-16 h-16" />}
+          icon={<ListChecks className="w-16 h-16" />}
           title="No Hay Evaluaciones Definidas"
           message={`Aún no se han añadido evaluaciones a la clase "${currentClass.name}".`}
           actions={<Button onClick={() => setIsModalOpen(true)} className="font-body">Añadir Primera Evaluación</Button>}
         />
       ) : (
-        <ScrollArea className="h-[65vh] border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="font-semibold text-primary/80 min-w-[200px] sticky left-0 bg-card z-10">Estudiante</TableHead>
-                {evaluations.map(evaluation => (
-                  <TableHead key={evaluation.id} className="font-semibold text-primary/80 min-w-[220px] text-center">
-                    <div className="flex flex-col items-center">
-                      <span className="font-bold">{evaluation.name}</span>
-                      <span className="text-xs text-muted-foreground">({evaluation.type})</span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3"/> 
-                        Entrega: {new Date(evaluation.dueDate + 'T00:00:00').toLocaleDateString('es-ES', { timeZone: 'UTC' })}
-                      </span>
-                    </div>
-                  </TableHead>
-                ))}
-                <TableHead className="font-semibold text-primary/80 min-w-[120px] text-center sticky right-0 bg-card z-10">Promedio Final</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map(student => (
-                <TableRow key={student.id}>
-                  <TableCell className="font-medium sticky left-0 bg-card z-10">{student.name}</TableCell>
-                  {evaluations.map(evaluation => {
-                    const assignmentEntry = student.assignmentData?.[evaluation.id];
-                    return (
-                      <TableCell key={evaluation.id} className="text-center">
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100" // Assuming a 0-100 scale
-                          step="0.1"
-                          value={assignmentEntry?.grade ?? ''}
-                          onChange={(e) => {
-                            const rawValue = e.target.value;
-                            const numValue = parseFloat(rawValue);
-                            onUpdateGrade(student.id, evaluation.id, rawValue === '' ? undefined : numValue);
-                          }}
-                          className="max-w-[80px] mx-auto text-center"
-                          placeholder="-"
-                        />
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell className="font-bold text-center sticky right-0 bg-card z-10">{calculateAverage(student, evaluations)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+        <p className="text-center text-muted-foreground font-body">
+          Usa la pestaña "Trabajos" para ingresar y ver el detalle de las calificaciones y estados de entrega.
+        </p>
       )}
+
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px] bg-card">
