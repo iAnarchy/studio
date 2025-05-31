@@ -168,6 +168,33 @@ export default function HomePage() {
     toast({ title: "Evaluación Añadida", description: `${evaluationData.name} ha sido añadida a la clase.` });
   }, [currentClassId, toast]);
 
+  const handleDeleteEvaluation = useCallback((evaluationId: string) => {
+    if (!currentClassId) return;
+    
+    const classForToast = classes.find(cls => cls.id === currentClassId);
+    const evaluationToRemoveName = classForToast?.evaluations.find(ev => ev.id === evaluationId)?.name;
+
+    setClasses(prevClasses => prevClasses.map(cls => {
+      if (cls.id === currentClassId) {
+        const updatedEvaluations = cls.evaluations.filter(ev => ev.id !== evaluationId);
+        const updatedStudents = cls.students.map(student => {
+          const newAssignmentData = { ...student.assignmentData };
+          delete newAssignmentData[evaluationId];
+          return { ...student, assignmentData: newAssignmentData };
+        });
+        return { ...cls, evaluations: updatedEvaluations, students: updatedStudents };
+      }
+      return cls;
+    }));
+
+    if (evaluationToRemoveName) {
+      toast({ title: "Evaluación Eliminada", description: `La evaluación "${evaluationToRemoveName}" ha sido eliminada.`, variant: "destructive" });
+    } else {
+      toast({ title: "Evaluación Eliminada", description: `La evaluación ha sido eliminada.`, variant: "destructive" });
+    }
+  }, [currentClassId, classes, toast]);
+
+
   const handleUpdateStudentGrade = useCallback((studentId: string, evaluationId: string, value: number | undefined) => {
     if (!currentClassId) return;
     setClasses(prevClasses => prevClasses.map(cls =>
@@ -236,7 +263,7 @@ export default function HomePage() {
       case 'leaderboard':
         return <LeaderboardTab currentClass={currentClass} />;
       case 'grades':
-        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} onUpdateGrade={handleUpdateStudentGrade} />;
+        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} onDeleteEvaluation={handleDeleteEvaluation} />;
       case 'trabajos':
         return <TrabajosTab currentClass={currentClass} onUpdateGrade={handleUpdateStudentGrade} onUpdateSubmissionStatus={handleUpdateStudentSubmissionStatus} />;
       default:
@@ -276,3 +303,4 @@ export default function HomePage() {
     </div>
   );
 }
+
