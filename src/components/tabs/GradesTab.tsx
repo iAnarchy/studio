@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { Class, Evaluation, EvaluationType, Student } from '@/types';
+import type { Class, Evaluation, EvaluationType } from '@/types';
 import { EVALUATION_TYPES } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,22 +13,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EmptyState from '@/components/ui/EmptyState';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { PlusCircle, BookOpen, Users, ListChecks, FileText, Activity, Briefcase, CheckSquare, CalendarDays, Trash2, Layers } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PlusCircle, BookOpen, ListChecks, FileText, Activity, Briefcase, CheckSquare, CalendarDays, Layers } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -37,7 +27,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 interface GradesTabProps {
   currentClass: Class | null;
   onAddEvaluation: (evaluationData: { name: string; type: EvaluationType; dueDate: string }) => void;
-  onDeleteEvaluation: (evaluationId: string) => void;
 }
 
 const evaluationSchema = z.object({
@@ -57,10 +46,8 @@ const evaluationTypeIcons: Record<EvaluationType, React.ElementType> = {
   'Examen': CheckSquare,
 };
 
-const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, onDeleteEvaluation }) => {
+const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [evaluationToDelete, setEvaluationToDelete] = useState<Evaluation | null>(null);
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<EvaluationFormData>({
     resolver: zodResolver(evaluationSchema),
@@ -86,19 +73,6 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
     setIsModalOpen(false);
   };
 
-  const openDeleteDialog = (evaluation: Evaluation) => {
-    setEvaluationToDelete(evaluation);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteEvaluation = () => {
-    if (evaluationToDelete) {
-      onDeleteEvaluation(evaluationToDelete.id);
-    }
-    setIsDeleteDialogOpen(false);
-    setEvaluationToDelete(null);
-  };
-
   if (!currentClass) {
     return (
       <EmptyState
@@ -118,11 +92,11 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
       case 'Tarea': return `Tareas (${count} ${count === 1 ? 'tarea' : 'tareas'})`;
       case 'Actividad': return `Actividades (${count} ${count === 1 ? 'actividad' : 'actividades'})`;
       case 'Proyecto': return `Proyectos (${count} ${count === 1 ? 'proyecto' : 'proyectos'})`;
-      case 'Examen': return `Examen`; // Count will be inside the card for Examen
+      case 'Examen': return `Examen`;
       default: return type;
     }
   };
-
+  
   const evaluationsCount = evaluations.length;
   const tareasCount = evaluations.filter(ev => ev.type === 'Tarea').length;
   const actividadesCount = evaluations.filter(ev => ev.type === 'Actividad').length;
@@ -235,12 +209,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
                             <p className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 opacity-70" /> Creado: {new Date(evaluation.dateCreated + 'T00:00:00').toLocaleDateString('es-ES', { timeZone: 'UTC' })}</p>
                             <p className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 opacity-70" /> Entrega: {new Date(evaluation.dueDate + 'T00:00:00').toLocaleDateString('es-ES', { timeZone: 'UTC' })}</p>
                           </CardContent>
-                          <CardFooter className="pt-2 pb-3">
-                             <Button variant="outline" size="sm" className="w-full text-destructive hover:bg-destructive/10 border-destructive/50 hover:border-destructive" onClick={() => openDeleteDialog(evaluation)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
-                              </Button>
-                          </CardFooter>
+                           {/* Delete button removed from here */}
                         </Card>
                       ))}
                     </div>
@@ -312,25 +281,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
           </form>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro de eliminar esta evaluación?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Estás a punto de eliminar la evaluación: <span className="font-semibold">{evaluationToDelete?.name}</span> ({evaluationToDelete?.type}).
-              Esta acción no se puede deshacer y todas las calificaciones asociadas a esta evaluación serán eliminadas permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setEvaluationToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteEvaluation} className="bg-destructive hover:bg-destructive/90">
-              Eliminar Evaluación
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
+      {/* AlertDialog for delete confirmation removed from here */}
     </div>
   );
 };

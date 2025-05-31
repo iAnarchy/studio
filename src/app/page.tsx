@@ -263,9 +263,9 @@ export default function HomePage() {
       case 'leaderboard':
         return <LeaderboardTab currentClass={currentClass} />;
       case 'grades':
-        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} onDeleteEvaluation={handleDeleteEvaluation} />;
+        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} />;
       case 'trabajos':
-        return <TrabajosTab currentClass={currentClass} onUpdateGrade={handleUpdateStudentGrade} onUpdateSubmissionStatus={handleUpdateStudentSubmissionStatus} />;
+        return <TrabajosTab currentClass={currentClass} onUpdateGrade={handleUpdateStudentGrade} onUpdateSubmissionStatus={handleUpdateStudentSubmissionStatus} onDeleteEvaluation={handleDeleteEvaluation} />;
       default:
         return null;
     }
