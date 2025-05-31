@@ -6,7 +6,6 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  // Modificado: Eliminado w-full del div para permitir que la tabla se expanda
   <div className="relative"> 
     <table
       ref={ref}
@@ -74,8 +73,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      // Modificado: Padding reducido para hacerlo más compacto
-      "h-10 px-3 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -90,8 +88,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      // Modificado: Padding reducido para hacerlo más compacto
-      "p-2 align-middle [&:has([role=checkbox])]:pr-0", 
+      "p-4 align-middle [&:has([role=checkbox])]:pr-0", 
       className
     )}
     {...props}
