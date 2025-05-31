@@ -115,7 +115,7 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
           <Table className="min-w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px] font-semibold text-primary/80 sticky left-0 bg-card z-10">Estudiante</TableHead>
+                <TableHead className="min-w-[200px] font-semibold text-primary/80 sticky left-0 bg-card z-10">Estudiante</TableHead>
                 {evaluations.map(evaluation => (
                   <TableHead key={evaluation.id} className="text-center font-semibold text-primary/80 min-w-[220px]">
                     {evaluation.name}
@@ -242,6 +242,3 @@ const UsersIcon: React.FC<UsersIconProps> = ({ className }) => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
   </svg>
 );
-
-
-    
