@@ -2,17 +2,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { Class, Student, Evaluation, EvaluationType, StudentAssignmentData } from '@/types';
+import type { Class, EvaluationType } from '@/types';
 import { EVALUATION_TYPES } from '@/types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import EmptyState from '@/components/ui/EmptyState';
-import { ClipboardCheck, BookOpen, PlusCircle } from 'lucide-react';
+import { ClipboardCheck, BookOpen, PlusCircle, CalendarDays, Info } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,7 +21,6 @@ import * as z from 'zod';
 interface GradesTabProps {
   currentClass: Class | null;
   onAddEvaluation: (evaluationData: { name: string; type: EvaluationType; dueDate: string }) => void;
-  onUpdateGrade: (studentId: string, evaluationId: string, value: number | undefined) => void;
 }
 
 const evaluationSchema = z.object({
@@ -33,20 +33,13 @@ const evaluationSchema = z.object({
 
 type EvaluationFormData = z.infer<typeof evaluationSchema>;
 
-
-const calculateAverage = (assignmentData: Student['assignmentData'] | undefined, evaluations: Evaluation[]): string => {
-  if (!assignmentData || !evaluations || evaluations.length === 0) return 'N/A';
-  
-  const validGrades = evaluations
-    .map(evaluation => assignmentData[evaluation.id]?.grade)
-    .filter(g => typeof g === 'number' && !isNaN(g)) as number[];
-    
-  if (validGrades.length === 0) return 'N/A';
-  const sum = validGrades.reduce((acc, curr) => acc + curr, 0);
-  return (sum / validGrades.length).toFixed(2);
+const formatDate = (dateString: string) => {
+  return new Date(dateString + 'T00:00:00Z').toLocaleDateString('es-ES', {
+    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+  });
 };
 
-const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, onUpdateGrade }) => {
+const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { control, handleSubmit, reset, formState: { errors } } = useForm<EvaluationFormData>({
     resolver: zodResolver(evaluationSchema),
@@ -77,19 +70,19 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
       <EmptyState
         icon={<BookOpen className="w-16 h-16" />}
         title="Sin Clase Seleccionada"
-        message="Por favor, selecciona una clase para ver y gestionar calificaciones."
+        message="Por favor, selecciona una clase para ver y gestionar las evaluaciones."
       />
     );
   }
   
-  const { students, evaluations } = currentClass;
+  const { evaluations } = currentClass;
 
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <h2 className="font-headline text-2xl text-primary flex items-center">
           <ClipboardCheck className="mr-2 h-7 w-7" />
-          Calificaciones de {currentClass.name}
+          Evaluaciones de {currentClass.name}
         </h2>
         <Button onClick={() => setIsModalOpen(true)} className="font-body bg-accent text-accent-foreground hover:bg-accent/90">
           <PlusCircle className="mr-2 h-5 w-5" />
@@ -101,67 +94,52 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
         <EmptyState
           icon={<ClipboardCheck className="w-16 h-16" />}
           title="No Hay Evaluaciones Definidas"
-          message={`Añade evaluaciones (tareas, proyectos, etc.) a la clase "${currentClass.name}" para poder asignar calificaciones.`}
+          message={`Añade evaluaciones (tareas, proyectos, etc.) a la clase "${currentClass.name}" para organizarlas aquí.`}
           actions={<Button onClick={() => setIsModalOpen(true)} className="font-body">Añadir Primera Evaluación</Button>}
         />
-      ) : students.length === 0 ? (
-        <EmptyState
-          icon={<UsersIcon className="w-16 h-16" />}
-          title="No Hay Estudiantes en la Clase"
-          message={`Añade estudiantes a la clase "${currentClass.name}" para poder asignar calificaciones.`}
-        />
       ) : (
-        <ScrollArea className="h-[65vh] border rounded-md">
-          <Table className="min-w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[200px] font-semibold text-primary/80 sticky left-0 bg-card z-10">Estudiante</TableHead>
-                {evaluations.map(evaluation => (
-                  <TableHead key={evaluation.id} className="text-center font-semibold text-primary/80 min-w-[220px]">
-                    {evaluation.name}
-                    <div className="text-xs text-muted-foreground font-normal">
-                      ({evaluation.type})
-                    </div>
-                    <div className="text-xs text-muted-foreground font-normal">
-                      Creado: {new Date(evaluation.dateCreated + 'T00:00:00Z').toLocaleDateString('es-ES', { timeZone: 'UTC' })}
-                    </div>
-                     <div className="text-xs text-muted-foreground font-normal">
-                      Entrega: {new Date(evaluation.dueDate + 'T00:00:00Z').toLocaleDateString('es-ES', { timeZone: 'UTC' })}
-                    </div>
-                  </TableHead>
-                ))}
-                <TableHead className="text-right font-semibold text-primary/80 sticky right-0 bg-card z-10 min-w-[120px]">Promedio Final</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((student: Student) => (
-                <TableRow key={student.id}>
-                  <TableCell className="font-medium sticky left-0 bg-card z-10">{student.name}</TableCell>
-                  {evaluations.map(evaluation => (
-                    <TableCell key={evaluation.id} className="text-center">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        value={student.assignmentData?.[evaluation.id]?.grade ?? ''}
-                        onChange={(e) => {
-                          const rawValue = e.target.value;
-                          const numValue = parseFloat(rawValue);
-                          onUpdateGrade(student.id, evaluation.id, rawValue === '' ? undefined : numValue);
-                        }}
-                        className="max-w-[80px] mx-auto text-center"
-                        placeholder="-"
-                      />
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right font-semibold sticky right-0 bg-card z-10">
-                    {calculateAverage(student.assignmentData, evaluations)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <ScrollArea className="h-[65vh] pr-2">
+          <Accordion type="multiple" defaultValue={EVALUATION_TYPES.map(type => type.toLowerCase())} className="w-full">
+            {EVALUATION_TYPES.map((type) => {
+              const filteredEvaluations = evaluations.filter(ev => ev.type === type);
+              return (
+                <AccordionItem value={type.toLowerCase()} key={type}>
+                  <AccordionTrigger className="text-lg font-semibold text-primary hover:no-underline">
+                    {type} ({filteredEvaluations.length})
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    {filteredEvaluations.length === 0 ? (
+                      <p className="text-muted-foreground p-4 text-center">No hay {type.toLowerCase()} definidas para esta clase.</p>
+                    ) : (
+                      <div className="space-y-4 pt-2">
+                        {filteredEvaluations.map(evaluation => (
+                          <Card key={evaluation.id} className="shadow-md border-l-4 border-primary/50">
+                            <CardHeader>
+                              <CardTitle className="font-headline text-xl text-primary">{evaluation.name}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
+                               <p className="flex items-center text-muted-foreground">
+                                <CalendarDays className="mr-2 h-4 w-4 text-accent" />
+                                <strong>Creado:</strong> {formatDate(evaluation.dateCreated)}
+                              </p>
+                              <p className="flex items-center text-muted-foreground">
+                                <CalendarDays className="mr-2 h-4 w-4 text-accent" />
+                                <strong>Entrega:</strong> {formatDate(evaluation.dueDate)}
+                              </p>
+                               <p className="flex items-center text-muted-foreground">
+                                <Info className="mr-2 h-4 w-4 text-accent" />
+                                <strong>Tipo:</strong> {evaluation.type}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         </ScrollArea>
       )}
 
@@ -228,17 +206,3 @@ const GradesTab: React.FC<GradesTabProps> = ({ currentClass, onAddEvaluation, on
 };
 
 export default GradesTab;
-
-interface UsersIconProps {
-  className?: string;
-}
-
-// Renamed to avoid conflict if Users from lucide-react is imported directly
-const UsersIcon: React.FC<UsersIconProps> = ({ className }) => ( 
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-    <circle cx="9" cy="7" r="4"/>
-    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-  </svg>
-);

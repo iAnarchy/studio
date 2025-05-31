@@ -236,7 +236,7 @@ export default function HomePage() {
       case 'leaderboard':
         return <LeaderboardTab currentClass={currentClass} />;
       case 'grades':
-        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} onUpdateGrade={handleUpdateStudentGrade} />;
+        return <GradesTab currentClass={currentClass} onAddEvaluation={handleAddEvaluation} />;
       case 'trabajos':
         return <TrabajosTab currentClass={currentClass} onUpdateGrade={handleUpdateStudentGrade} onUpdateSubmissionStatus={handleUpdateStudentSubmissionStatus} />;
       default:
