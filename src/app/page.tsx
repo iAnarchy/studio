@@ -88,7 +88,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (isClient && classes.length > 0) {
+    if (isClient) { // Save to localStorage whenever classes change and client is ready
       localStorage.setItem(CLASS_PULSE_DATA_KEY, JSON.stringify(classes));
     }
   }, [classes, isClient]);
@@ -152,30 +152,54 @@ export default function HomePage() {
   }, [currentClassId, toast]);
 
   const handleRemoveStudent = useCallback((studentId: string) => {
+    console.log('[handleRemoveStudent] Attempting to remove studentId:', studentId, 'from currentClassId:', currentClassId);
+
     if (!currentClassId) {
-      console.error("No current class ID to remove student from.");
+      console.error("[handleRemoveStudent] No current class ID to remove student from.");
       return;
     }
-    // Get the most up-to-date activeClass directly from 'classes' inside the callback
     const activeClass = classes.find(cls => cls.id === currentClassId);
     if (!activeClass) {
-      console.error("Current class not found when trying to remove student.");
+      console.error("[handleRemoveStudent] Current class not found with ID:", currentClassId, "Available class IDs:", classes.map(c => c.id));
       return;
     }
+    console.log('[handleRemoveStudent] Found activeClass:', activeClass.name);
 
     const studentToRemove = activeClass.students.find(s => s.id === studentId);
     if (!studentToRemove) {
-      console.warn("Student to remove not found in the current class. This might happen if the student was already removed or the ID is incorrect.");
+      console.error(`[handleRemoveStudent] Student to remove (ID: ${studentId}) not found in class "${activeClass.name}". Students in class (IDs):`, activeClass.students.map(s => s.id));
       return;
     }
+    console.log('[handleRemoveStudent] Found studentToRemove:', studentToRemove.name, 'with ID:', studentToRemove.id);
 
     if (window.confirm(`¿Estás seguro de eliminar a ${studentToRemove.name}?`)) {
-      setClasses(prevClasses => prevClasses.map(cls =>
-        cls.id === currentClassId
-          ? { ...cls, students: cls.students.filter(s => s.id !== studentId) }
-          : cls
-      ));
+      console.log('[handleRemoveStudent] Confirmed removal for studentId:', studentId);
+      setClasses(prevClasses => {
+        console.log('[handleRemoveStudent] setClasses - prevClasses count:', prevClasses.length, 'currentClassId for update:', currentClassId);
+        return prevClasses.map(cls => {
+          if (cls.id === currentClassId) {
+            console.log('[handleRemoveStudent] setClasses - Updating class:', cls.name, 'ID:', cls.id, '. Filtering studentId:', studentId);
+            const initialStudentCount = cls.students.length;
+            const newStudents = cls.students.filter(s => {
+              const shouldKeep = s.id !== studentId;
+              if (!shouldKeep) {
+                console.log('[handleRemoveStudent] setClasses - Filtering out student:', s.name, s.id);
+              }
+              return shouldKeep;
+            });
+            if (newStudents.length === initialStudentCount && initialStudentCount > 0) {
+                console.warn('[handleRemoveStudent] setClasses - Student filter had no effect. Student ID', studentId, 'not found for filtering in class instance during map. Student IDs in this instance:', cls.students.map(st => st.id));
+            } else {
+                console.log('[handleRemoveStudent] setClasses - Student list for class', cls.name, 'changed from', initialStudentCount, 'to', newStudents.length);
+            }
+            return { ...cls, students: newStudents };
+          }
+          return cls;
+        });
+      });
       toast({ title: "Estudiante Eliminado", description: `${studentToRemove.name} ha sido eliminado.`, variant: "destructive" });
+    } else {
+      console.log('[handleRemoveStudent] Cancelled removal for studentId:', studentId);
     }
   }, [classes, currentClassId, toast]);
 
